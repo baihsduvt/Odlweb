@@ -1,26 +1,20 @@
-
 name: Deploy static content to Pages
 
 on:
-  # 仅在推送到默认分支时运行
   push:
     branches: ['main']
-  # 允许手动从 Actions 标签页触发工作流
   workflow_dispatch:
 
-# 设置 GITHUB_TOKEN 的权限，以允许部署到 GitHub Pages
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# 允许一个并发的部署
 concurrency:
   group: 'pages'
   cancel-in-progress: true
 
 jobs:
-  # 单次部署的工作描述
   deploy:
     environment:
       name: github-pages
@@ -29,28 +23,37 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'pnpm' # 如果使用 yarn 或 pnpm，请相应更改
-      
+          # 注意：这里不要写 cache: 'pnpm'，除非你已经安装了 pnpm
+          # 如果还没安装 pnpm，先注释掉 cache 或改用 npm/yarn 缓存策略
+          # 或者使用下面的 pnpm/action-setup 自动处理缓存
+
+      # ✅ 新增步骤：安装 pnpm
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9 # 指定你本地使用的 pnpm 版本，或使用 'latest'
+          run_install: false # 设置为 false，因为我们后面会手动运行 install
+
       - name: Install dependencies
-        run: pnpm ci # 或者 pnpm install
-      
+        # 现在可以使用 pnpm 了
+        run: pnpm install
+
       - name: Build
-        run: pnpm run build # 确保你的 package.json 中有此脚本，且输出到 dist 目录
-      
+        run: pnpm build
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
-      
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # 上传整个 dist 目录，请根据你的构建输出目录修改此处
-          path: './dist'
-      
+          path: './dist' # 确保这与你的 vite.config.ts 中的 outDir 一致
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
